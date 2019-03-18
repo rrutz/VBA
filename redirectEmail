@@ -1,0 +1,55 @@
+Option Explicit
+Private WithEvents inboxItems As Outlook.Items
+
+
+
+Private Sub Application_Startup()
+    Dim outlookApp As Outlook.Application
+    Dim objectNS As Outlook.NameSpace
+    
+    Set outlookApp = Outlook.Application
+    Set objectNS = outlookApp.GetNamespace("MAPI")
+    Set inboxItems = objectNS.GetDefaultFolder(olFolderInbox).Folders("PRequest").Items
+End Sub
+
+
+Private Sub inboxItems_ItemAdd(ByVal Item As Object)
+    On Error GoTo ErrorHandler
+    
+    Dim Msg As Outlook.MailItem
+    Dim sendTo As Object
+
+    If TypeName(Item) = "MailItem" Then
+        Dim objRegExp As New RegExp
+        Set objRegExp = CreateObject("VBScript.RegExp")
+    
+        Dim objMsg As MailItem
+        Set objMsg = Application.CreateItem(olMailItem)
+        If Item.Subject Like "matchthisstuff*" Then
+            If Item.Subject Like "*To:*" Then
+                objRegExp.Pattern = ".*To:(.*):To.*"
+                Set sendTo = objRegExp.Execute(Item.Subject)
+                objMsg.To = sendTo.Item(0).SubMatches.Item(0)
+            End If
+            If Item.Subject Like "*CC:*" Then
+                objRegExp.Pattern = ".*CC:(.*):CC.*"
+                Set sendTo = objRegExp.Execute(Item.Subject)
+                objMsg.CC = sendTo.Item(0).SubMatches.Item(0)
+            End If
+            
+            If Item.Subject Like "*Subject:*" Then
+                objRegExp.Pattern = ".*Subject:(.*):Subject.*"
+                Set sendTo = objRegExp.Execute(Item.Subject)
+                objMsg.Subject = sendTo.Item(0).SubMatches.Item(0)
+            End If
+            objMsg.Send
+        End If
+    End If
+    
+ExitNewItem:
+        Exit Sub
+ErrorHandler:
+        MsgBox Err.Number & " - " & Err.Description
+        Resume ExitNewItem
+End Sub
+
